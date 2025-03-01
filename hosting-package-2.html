@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Motor Analysis Dashboard</title>
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.21.2/babel.min.js"></script>
+    <!-- Recharts -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.5.0/Recharts.min.js"></script>
+    <!-- XLSX library -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #4a5568;
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+            margin-bottom: 2rem;
+            border-radius: 0.375rem;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        @media (min-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        .upload-container {
+            background-color: white;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 2px dashed #cbd5e0;
+            text-align: center;
+        }
+        .upload-button {
+            display: inline-block;
+            background-color: #4299e1;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.2s;
+        }
+        .upload-button:hover {
+            background-color: #3182ce;
+        }
+        .file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { 
+            LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+            ScatterChart, Scatter, ZAxis, ComposedChart, Bar, Area
+        } = Recharts;
+
+        // Mock data loader (replace with your actual data loading logic)
+        const loadMockData = () => {
+            // This is a simplified version of your data
+            // In a real application, you'd load this from your Excel file
+            return [
+                {
+                    "Speed": 500,
+                    "Shaft_Torque": 13,
+                    "Shaft_Power": 682.9,
+                    "Efficiency": 35.1,
+                    "Stator_Current_Phase_RMS": 212.1,
+                    "Voltage_Phase_RMS": 3.3,
+                    "Total_Loss": 1262.1,
+                    "Stator_Copper_Loss": 1003.2,
+                    "Rotor_Copper_Loss": 95.2,
+                    "Iron_Loss": 8.5,
+                    "Mechanical_Loss": 0.4,
+                    "Custom_Loss_Total_Internal": 154.8,
+                    "Inverter_loss": 15.6,
+                    "Power_Factor": 0.8
+                },
+                {
+                    "Speed": 2500,
+                    "Shaft_Torque": 12.9,
+                    "Shaft_Power": 3389.4,
+                    "Efficiency": 71.1,
+                    "Stator_Current_Phase_RMS": 212.1,
+                    "Voltage_Phase_RMS": 11.9,
+                    "Total_Loss": 1376.2,
+                    "Stator_Copper_Loss": 1053.0,
+                    "Rotor_Copper_Loss": 95.2,
+                    "Iron_Loss": 65.5,
+                    "Mechanical_Loss": 4.4,
+                    "Custom_Loss_Total_Internal": 158.1,
+                    "Inverter_loss": 19.0,
+                    "Power_Factor": 0.6
+                },
+                {
+                    "Speed": 5000,
+                    "Shaft_Torque": 5.0,
+                    "Shaft_Power": 2546.5,
+                    "Efficiency": 83.7,
+                    "Stator_Current_Phase_RMS": 70.7,
+                    "Voltage_Phase_RMS": 16.3,
+                    "Total_Loss": 494.5,
+                    "Stator_Copper_Loss": 152.2,
+                    "Rotor_Copper_Loss": 95.2,
+                    "Iron_Loss": 91.9,
+                    "Mechanical_Loss": 11.1,
+                    "Custom_Loss_Total_Internal": 144.1,
+                    "Inverter_loss": 5.0,
+                    "Power_Factor": 0.8
+                },
+                {
+                    "Speed": 7500,
+                    "Shaft_Torque": 4.3,
+                    "Shaft_Power": 3396.4,
+                    "Efficiency": 85.7,
+                    "Stator_Current_Phase_RMS": 70.7,
+                    "Voltage_Phase_RMS": 18.8,
+                    "Total_Loss": 567.0,
+                    "Stator_Copper_Loss": 187.1,
+                    "Rotor_Copper_Loss": 95.2,
+                    "Iron_Loss": 118.5,
+                    "Mechanical_Loss": 21.1,
+                    "Custom_Loss_Total_Internal": 145.2,
+                    "Inverter_loss": 6.1,
+                    "Power_Factor": 0.9
+                },
+                {
+                    "Speed": 10000,
+                    "Shaft_Torque": 4.0,
+                    "Shaft_Power": 4141.8,
+                    "Efficiency": 83.7,
+                    "Stator_Current_Phase_RMS": 70.7,
+                    "Voltage_Phase_RMS": 19.7,
+                    "Total_Loss": 808.0,
+                    "Stator_Copper_Loss": 378.3,
+                    "Rotor_Copper_Loss": 95.2,
+                    "Iron_Loss": 154.1,
+                    "Mechanical_Loss": 32.6,
+                    "Custom_Loss_Total_Internal": 147.8,
+                    "Inverter_loss": 8.7,
+                    "Power_Factor": 0.9
+                }
+            ];
+        };
+
+        // File upload handler component
+        const FileUpload = ({ onDataLoaded }) => {
+            const fileInputRef = React.useRef(null);
+            const [fileName, setFileName] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            
+            const handleFileButtonClick = () => {
+                // Trigger the hidden file input
+                fileInputRef.current.click();
+            };
+            
+            const handleFileUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                setFileName(file.name);
+                setIsLoading(true);
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = e.target.result;
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                        onDataLoaded(jsonData);
+                        setIsLoading(false);
+                    } catch (error) {
+                        console.error("Error processing file:", error);
+                        alert("Error processing the file. Please make sure it's a valid Excel file.");
+                        setFileName('');
+                        setIsLoading(false);
+                    }
+                };
+                reader.onerror = () => {
+                    alert("Error reading the file. Please try again.");
+                    setFileName('');
+                    setIsLoading(false);
+                };
+                reader.readAsArrayBuffer(file);
+            };
+            
+            return (
+                <div className="upload-container">
+                    <h2 className="text-xl font-bold mb-2">Upload Motor Data</h2>
+                    <p className="mb-4">Upload your Excel file containing motor performance data</p>
+                    
+                    <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        accept=".xlsx,.xls" 
+                        onChange={handleFileUpload}
+                        className="file-input"
+                    />
+                    
+                    <div>
+                        <button 
+                            type="button"
+                            onClick={handleFileButtonClick}
+                            className="upload-button"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'Loading...' : 'Select Excel File'}
+                        </button>
+                    </div>
+                    
+                    {fileName && (
+                        <div className="mt-3 text-green-600">
+                            <span className="font-medium">File loaded:</span> {fileName}
+                        </div>
+                    )}
+                    
+                    {!fileName && (
+                        <p className="mt-3 text-sm text-gray-500">
+                            Using demo data. Upload your own Excel file for custom analysis.
+                        </p>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            
+            useEffect(() => {
+                // Load mock data initially
+                setData(loadMockData());
+                setLoading(false);
+            }, []);
+            
+            if (loading) {
+                return <div className="p-4">Loading motor data...</div>;
+            }
+            
+            // Efficiency Analysis
+            const efficiencyData = data.map(item => ({
+                speed: item.Speed,
+                efficiency: item.Efficiency,
+                torque: item.Shaft_Torque,
+                power: item.Shaft_Power
+            }));
+            
+            // Group by similar torque values for efficiency curves
+            const uniqueTorques = [...new Set(data.map(item => Math.round(item.Shaft_Torque)))];
+            const torqueGroups = uniqueTorques.map(targetTorque => {
+                const tolerance = 0.5;
+                return {
+                    torque: targetTorque,
+                    data: data.filter(item => 
+                        item.Shaft_Torque >= targetTorque - tolerance && 
+                        item.Shaft_Torque <= targetTorque + tolerance
+                    ).map(item => ({
+                        speed: item.Speed,
+                        efficiency: item.Efficiency,
+                        torque: item.Shaft_Torque,
+                        power: item.Shaft_Power
+                    }))
+                };
+            }).filter(group => group.data.length > 0);
+            
+            // Loss Analysis
+            const lossData = data.map(item => ({
+                speed: item.Speed,
+                stator_copper_loss: item.Stator_Copper_Loss,
+                rotor_copper_loss: item.Rotor_Copper_Loss,
+                iron_loss: item.Iron_Loss,
+                mechanical_loss: item.Mechanical_Loss,
+                custom_internal_loss: item.Custom_Loss_Total_Internal,
+                inverter_loss: item.Inverter_loss,
+                total_loss: item.Total_Loss,
+                efficiency: item.Efficiency
+            }));
+            
+            // Power Factor Analysis
+            const powerFactorData = data.map(item => ({
+                speed: item.Speed,
+                power_factor: item.Power_Factor,
+                torque: item.Shaft_Torque
+            }));
+            
+            // Format for tooltips
+            const formatNumber = (num) => {
+                return num.toFixed(1);
+            };
+            
+            // Custom tooltip for efficiency map
+            const CustomTooltip = ({ active, payload }) => {
+                if (active && payload && payload.length) {
+                    return (
+                        <div className="bg-white p-2 border border-gray-300 rounded shadow-sm">
+                            <p className="font-semibold">Speed: {payload[0].payload.speed} RPM</p>
+                            <p>Torque: {formatNumber(payload[0].payload.torque)} Nm</p>
+                            <p>Efficiency: {formatNumber(payload[0].payload.efficiency)}%</p>
+                            <p>Power: {formatNumber(payload[0].payload.power)} W</p>
+                        </div>
+                    );
+                }
+                return null;
+            };
+
+            // Find maximum efficiency point
+            const maxEfficiencyPoint = data.reduce((max, item) => 
+                item.Efficiency > max.Efficiency ? item : max, data[0]);
+                
+            // Find maximum power point
+            const maxPowerPoint = data.reduce((max, item) => 
+                item.Shaft_Power > max.Shaft_Power ? item : max, data[0]);
+                
+            // Find maximum torque point
+            const maxTorquePoint = data.reduce((max, item) => 
+                item.Shaft_Torque > max.Shaft_Torque ? item : max, data[0]);
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1 className="text-3xl font-bold">Electric Motor Performance Analysis</h1>
+                    </div>
+                    
+                    <FileUpload onDataLoaded={setData} />
+                    
+                    <div className="dashboard-grid">
+                        {/* Efficiency Map */}
+                        <div className="card">
+                            <h2 className="title">Efficiency vs. Speed & Torque</h2>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ScatterChart margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            type="number" 
+                                            dataKey="speed" 
+                                            name="Speed" 
+                                            unit=" RPM" 
+                                            domain={[0, 'dataMax']} 
+                                        />
+                                        <YAxis 
+                                            type="number" 
+                                            dataKey="torque" 
+                                            name="Torque" 
+                                            unit=" Nm" 
+                                            domain={[0, 'dataMax']} 
+                                        />
+                                        <ZAxis 
+                                            type="number" 
+                                            dataKey="efficiency" 
+                                            range={[50, 400]} 
+                                            name="Efficiency" 
+                                            unit="%" 
+                                        />
+                                        <Tooltip cursor={{ strokeDasharray: '3 3' }} content={<CustomTooltip />} />
+                                        <Legend />
+                                        <Scatter 
+                                            name="Motor Efficiency Points" 
+                                            data={efficiencyData} 
+                                            fill="#8884d8" 
+                                            shape="circle" 
+                                        />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="text-sm text-gray-600 mt-2">
+                                Note: Circle size represents efficiency percentage
+                            </div>
+                        </div>
+                        
+                        {/* Efficiency Curves at Different Torques */}
+                        <div className="card">
+                            <h2 className="title">Efficiency Curves at Different Torques</h2>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            type="number" 
+                                            dataKey="speed" 
+                                            domain={[0, 'dataMax']}
+                                            label={{ value: 'Speed (RPM)', position: 'insideBottom', offset: -5 }}
+                                        />
+                                        <YAxis 
+                                            domain={[30, 90]}
+                                            label={{ value: 'Efficiency (%)', angle: -90, position: 'insideLeft' }}
+                                        />
+                                        <Tooltip />
+                                        <Legend />
+                                        {torqueGroups.map((group, index) => (
+                                            <Line 
+                                                key={index}
+                                                type="monotone" 
+                                                data={group.data} 
+                                                dataKey="efficiency" 
+                                                name={`~${group.torque} Nm`}
+                                                stroke={`hsl(${(index * 30) % 360}, 70%, 50%)`}
+                                                dot={{ r: 3 }}
+                                                activeDot={{ r: 5 }}
+                                            />
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        
+                        {/* Loss Analysis */}
+                        <div className="card">
+                            <h2 className="title">Loss Distribution vs. Speed</h2>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={lossData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            dataKey="speed"
+                                            label={{ value: 'Speed (RPM)', position: 'insideBottom', offset: -5 }}
+                                        />
+                                        <YAxis 
+                                            yAxisId="left"
+                                            label={{ value: 'Losses (W)', angle: -90, position: 'insideLeft' }}
+                                        />
+                                        <YAxis 
+                                            yAxisId="right" 
+                                            orientation="right" 
+                                            domain={[30, 90]} 
+                                            label={{ value: 'Efficiency (%)', angle: 90, position: 'insideRight' }}
+                                        />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="stator_copper_loss" 
+                                            stackId="1" 
+                                            name="Stator Copper Loss" 
+                                            fill="#8884d8" 
+                                            stroke="#8884d8" 
+                                            yAxisId="left"
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="rotor_copper_loss" 
+                                            stackId="1" 
+                                            name="Rotor Copper Loss" 
+                                            fill="#82ca9d" 
+                                            stroke="#82ca9d" 
+                                            yAxisId="left"
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="iron_loss" 
+                                            stackId="1" 
+                                            name="Iron Loss" 
+                                            fill="#ffc658" 
+                                            stroke="#ffc658" 
+                                            yAxisId="left"
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="mechanical_loss" 
+                                            stackId="1" 
+                                            name="Mechanical Loss" 
+                                            fill="#ff8042" 
+                                            stroke="#ff8042" 
+                                            yAxisId="left"
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="custom_internal_loss" 
+                                            stackId="1" 
+                                            name="Custom Internal Loss" 
+                                            fill="#8dd1e1" 
+                                            stroke="#8dd1e1" 
+                                            yAxisId="left"
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="inverter_loss" 
+                                            stackId="1" 
+                                            name="Inverter Loss" 
+                                            fill="#a4de6c" 
+                                            stroke="#a4de6c" 
+                                            yAxisId="left"
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="efficiency" 
+                                            name="Efficiency" 
+                                            stroke="#ff0000" 
+                                            yAxisId="right" 
+                                            dot={false}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        
+                        {/* Power Factor Analysis */}
+                        <div className="card">
+                            <h2 className="title">Power Factor vs. Speed</h2>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ScatterChart margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            type="number" 
+                                            dataKey="speed" 
+                                            name="Speed" 
+                                            unit=" RPM" 
+                                            domain={[0, 'dataMax']} 
+                                        />
+                                        <YAxis 
+                                            type="number" 
+                                            dataKey="power_factor" 
+                                            name="Power Factor" 
+                                            domain={[0, 1]} 
+                                        />
+                                        <ZAxis 
+                                            type="number" 
+                                            dataKey="torque" 
+                                            range={[50, 400]} 
+                                            name="Torque" 
+                                            unit=" Nm" 
+                                        />
+                                        <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                                        <Legend />
+                                        <Scatter 
+                                            name="Power Factor" 
+                                            data={powerFactorData} 
+                                            fill="#82ca9d" 
+                                            shape="circle" 
+                                        />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="text-sm text-gray-600 mt-2">
+                                Note: Circle size represents torque
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Summary Stats */}
+                    <div className="card full-width">
+                        <h2 className="title">Key Performance Indicators</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="p-3 border rounded">
+                                <h3 className="font-medium">Peak Efficiency</h3>
+                                <p className="text-2xl font-bold">
+                                    {maxEfficiencyPoint.Efficiency.toFixed(1)}%
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    at {maxEfficiencyPoint.Speed} RPM, 
+                                    {maxEfficiencyPoint.Shaft_Torque.toFixed(1)} Nm
+                                </p>
+                            </div>
+                            <div className="p-3 border rounded">
+                                <h3 className="font-medium">Maximum Power</h3>
+                                <p className="text-2xl font-bold">
+                                    {maxPowerPoint.Shaft_Power.toFixed(1)} W
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    at {maxPowerPoint.Speed} RPM, 
+                                    {maxPowerPoint.Efficiency.toFixed(1)}% efficiency
+                                </p>
+                            </div>
+                            <div className="p-3 border rounded">
+                                <h3 className="font-medium">Maximum Torque</h3>
+                                <p className="text-2xl font-bold">
+                                    {maxTorquePoint.Shaft_Torque.toFixed(1)} Nm
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    at {maxTorquePoint.Speed} RPM
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="text-center mt-8 mb-4 text-sm text-gray-500">
+                        <p>© 2025 Motor Analysis Dashboard. Created with React, Recharts and Tailwind CSS.</p>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
